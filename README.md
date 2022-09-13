@@ -19,7 +19,7 @@ Use the pre-built docker image like so:
 docker run --name=tftp-pxe-server \
     -it -d \
     --restart=unless-stopped \
-    -p 69:69/udp \
+    --network=host \
     -v $PWD/tftproot:/tftproot
     ghcr.io/jrcichra/tftp-pxe-server
     -directory /tftproot

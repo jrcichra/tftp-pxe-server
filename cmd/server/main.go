@@ -10,7 +10,7 @@ import (
 func main() {
 	directory := flag.String("directory", ".", "directory to serve")
 	port := flag.Int("port", 69, "tftp port")
-	timeout := flag.Int("timeout", 10, "seconds for tftp timeouts")
+	timeout := flag.Int("timeout", 60, "seconds for tftp timeouts")
 	ipPaths := flag.Bool("ipPaths", true, "prepend request paths with src IP address")
 	flag.Parse()
 	s := server.Server{
