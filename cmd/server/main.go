@@ -11,6 +11,8 @@ import (
 	"syscall"
 	"time"
 
+	_ "net/http/pprof"
+
 	"github.com/jrcichra/tftp-pxe-server/internal/server"
 	"github.com/oklog/run"
 	"github.com/prometheus/client_golang/prometheus"
