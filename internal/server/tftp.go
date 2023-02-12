@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pin/tftp"
+	"github.com/pin/tftp/v3"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
