@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -64,6 +65,8 @@ func (s *Server) Stop() {
 }
 
 func (s *Server) read(filename string, rf io.ReaderFrom) (string, string, error) {
+	// clean the filename
+	filename = strings.ToValidUTF8(filename, "")
 	// get the remote's IP address
 	ip := rf.(tftp.OutgoingTransfer).RemoteAddr().IP.String()
 	var path string
