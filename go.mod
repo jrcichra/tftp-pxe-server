@@ -5,7 +5,7 @@ go 1.19
 require (
 	github.com/oklog/run v1.1.0
 	github.com/pin/tftp/v3 v3.0.0
-	github.com/prometheus/client_golang v1.15.0
+	github.com/prometheus/client_golang v1.15.1
 )
 
 require (
