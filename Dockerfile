@@ -1,4 +1,4 @@
-FROM golang:1.20.4 as builder
+FROM golang:1.20.5 as builder
 WORKDIR /app
 COPY . .
 RUN go build -v -o tftp-pxe-server cmd/server/main.go
