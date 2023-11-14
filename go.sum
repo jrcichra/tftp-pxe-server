@@ -13,8 +13,8 @@ github.com/matttproud/golang_protobuf_extensions v1.0.4 h1:mmDVorXM7PCGKw94cs5zk
 github.com/matttproud/golang_protobuf_extensions v1.0.4/go.mod h1:BSXmuO+STAnVfrANrmjBb36TMTDstsz7MSK+HVaYKv4=
 github.com/oklog/run v1.1.0 h1:GEenZ1cK0+q0+wsJew9qUg/DyD8k3JzYsZAi5gYi2mA=
 github.com/oklog/run v1.1.0/go.mod h1:sVPdnTZT1zYwAJeCMu2Th4T21pA3FPOQRfWjQlk7DVU=
-github.com/pin/tftp/v3 v3.0.0 h1:o9cQpmWBSbgiaYXuN+qJAB12XBIv4dT7OuOONucn2l0=
-github.com/pin/tftp/v3 v3.0.0/go.mod h1:xwQaN4viYL019tM4i8iecm++5cGxSqen6AJEOEyEI0w=
+github.com/pin/tftp/v3 v3.1.0 h1:rQaxd4pGwcAJnpId8zC+O2NX3B2/NscjDZQaqEjuE7c=
+github.com/pin/tftp/v3 v3.1.0/go.mod h1:xwQaN4viYL019tM4i8iecm++5cGxSqen6AJEOEyEI0w=
 github.com/prometheus/client_golang v1.17.0 h1:rl2sfwZMtSthVU752MqfjQozy7blglC+1SOtjMAMh+Q=
 github.com/prometheus/client_golang v1.17.0/go.mod h1:VeL+gMmOAxkS2IqfCq0ZmHSL+LjWfWDUmp1mBz9JgUY=
 github.com/prometheus/client_model v0.4.1-0.20230718164431-9a2bf3000d16 h1:v7DLqVdK4VrYkVD5diGdl4sxJurKJEMnODWRJlxV9oM=
