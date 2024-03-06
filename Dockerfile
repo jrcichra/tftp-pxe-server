@@ -1,4 +1,4 @@
-FROM golang:1.22.0-bookworm as builder
+FROM golang:1.22.1-bookworm as builder
 WORKDIR /app
 COPY . .
 RUN go build -v -o tftp-pxe-server cmd/server/main.go
