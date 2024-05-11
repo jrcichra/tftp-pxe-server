@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -29,7 +30,7 @@ type Server struct {
 	Directory      string
 	Port           int
 	Timeout        time.Duration
-	IPPaths        bool
+	DefaultFolder  string
 	server         *tftp.Server
 	metricsEntries map[entry]float64
 	metricsLock    sync.RWMutex
@@ -69,12 +70,15 @@ func (s *Server) read(filename string, rf io.ReaderFrom) (string, string, error)
 	filename = strings.ToValidUTF8(filename, "")
 	// get the remote's IP address
 	ip := rf.(tftp.OutgoingTransfer).RemoteAddr().IP.String()
-	var path string
-	if s.IPPaths {
-		path = fmt.Sprintf("%s%c%s%c%s", s.Directory, os.PathSeparator, ip, os.PathSeparator, filename)
-	} else {
-		path = fmt.Sprintf("%s%c%s", s.Directory, os.PathSeparator, filename)
+
+	path := filepath.Join(s.Directory, ip)
+	// if the ip folder doesn't exist, use the default folder
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		path = filepath.Join(s.Directory, s.DefaultFolder)
 	}
+
+	// add the filename
+	path = filepath.Join(path, filename)
 
 	log.Printf("Opening %s...\n", path)
 	file, err := os.Open(path)

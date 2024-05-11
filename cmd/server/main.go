@@ -24,7 +24,7 @@ func main() {
 	port := flag.Int("port", 69, "tftp port")
 	metricsPort := flag.Int("metrics-port", 9101, "metrics port")
 	timeout := flag.Int("timeout", 60, "seconds for tftp timeouts")
-	ipPaths := flag.Bool("ipPaths", true, "prepend request paths with src IP address")
+	defaultFolder := flag.String("default-folder", "default", "folder to serve when IP address isn't overridden")
 	flag.Parse()
 
 	var g run.Group
@@ -45,10 +45,10 @@ func main() {
 	// server
 	{
 		s := server.Server{
-			Directory: *directory,
-			Port:      *port,
-			Timeout:   time.Duration(*timeout) * time.Second,
-			IPPaths:   *ipPaths,
+			Directory:     *directory,
+			Port:          *port,
+			Timeout:       time.Duration(*timeout) * time.Second,
+			DefaultFolder: *defaultFolder,
 		}
 		prometheus.MustRegister(&s)
 		g.Add(func() error {
