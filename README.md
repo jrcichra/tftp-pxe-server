@@ -38,5 +38,5 @@ Usage of ./tftp-pxe-server:
   -port int
         tftp port (default 69)
   -timeout int
-        seconds for tftp timeouts (default 10)
+        seconds for tftp timeouts (default 60)
 ```
