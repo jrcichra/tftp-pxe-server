@@ -30,6 +30,7 @@ type Server struct {
 	Directory      string
 	Port           int
 	Timeout        time.Duration
+	SinglePort     bool
 	DefaultFolder  string
 	server         *tftp.Server
 	metricsEntries map[entry]float64
@@ -55,6 +56,9 @@ func (s *Server) Run() error {
 	s.metricsEntries = make(map[entry]float64)
 	s.server = tftp.NewServer(s.readHandler, nil)
 	s.server.SetTimeout(s.Timeout)
+	if s.SinglePort {
+		s.server.EnableSinglePort()
+	}
 	log.Printf("Serving TFTP reads on port %d...\n", s.Port)
 	return s.server.ListenAndServe(fmt.Sprintf(":%d", s.Port))
 }

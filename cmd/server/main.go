@@ -24,6 +24,7 @@ func main() {
 	port := flag.Int("port", 69, "tftp port")
 	metricsPort := flag.Int("metrics-port", 9101, "metrics port")
 	timeout := flag.Int("timeout", 60, "seconds for tftp timeouts")
+	singlePort := flag.Bool("single-port", false, "run in single port mode")
 	defaultFolder := flag.String("default-folder", "default", "folder to serve when IP address isn't overridden")
 	flag.Parse()
 
@@ -48,6 +49,7 @@ func main() {
 			Directory:     *directory,
 			Port:          *port,
 			Timeout:       time.Duration(*timeout) * time.Second,
+			SinglePort:    *singlePort,
 			DefaultFolder: *defaultFolder,
 		}
 		prometheus.MustRegister(&s)
