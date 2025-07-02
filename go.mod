@@ -1,9 +1,9 @@
 module github.com/jrcichra/tftp-pxe-server
 
-go 1.19
+go 1.22
 
 require (
-	github.com/oklog/run v1.1.0
+	github.com/oklog/run v1.2.0
 	github.com/pin/tftp/v3 v3.1.0
 	github.com/prometheus/client_golang v1.22.0
 )
