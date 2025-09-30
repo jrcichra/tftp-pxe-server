@@ -90,6 +90,8 @@ func (s *Server) read(filename string, rf io.ReaderFrom) (string, string, error)
 		log.Printf("%v\n", err)
 		return ip, path, err
 	}
+	defer file.Close()
+
 	n, err := rf.ReadFrom(file)
 	if err != nil {
 		log.Printf("%v\n", err)
@@ -109,5 +111,16 @@ func (s *Server) readHandler(filename string, rf io.ReaderFrom) error {
 		success: err == nil,
 	}] += 1
 	s.metricsLock.Unlock()
+
+	// Log the error for debugging early termination issues
+	if err != nil {
+		log.Printf("TFTP read error for file %s from IP %s: %v", filename, ip, err)
+	}
+
+	// Add more detailed logging for successful transfers
+	if err == nil {
+		log.Printf("TFTP transfer completed successfully for file %s from IP %s", filename, ip)
+	}
+
 	return err
 }
