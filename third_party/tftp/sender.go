@@ -103,7 +103,7 @@ func (s *sender) ReadFrom(r io.Reader) (n int64, err error) {
 		}
 	}
 	if s.sendA.enabled { /* senderAnticipate */
-		return readFromAnticipate(s, r)
+		return readFromWindow(s, r)
 	}
 	s.block = 1 // start data transmission with block 1
 	binary.BigEndian.PutUint16(s.send[0:2], opDATA)
