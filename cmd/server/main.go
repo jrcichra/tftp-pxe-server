@@ -24,11 +24,16 @@ func main() {
 	port := flag.Int("port", 69, "tftp port")
 	metricsPort := flag.Int("metrics-port", 9101, "metrics port")
 	timeout := flag.Int("timeout", 60, "seconds to wait for an ACK before retransmitting a packet")
+	retransmit := flag.Duration("retransmit", 0, "like -timeout but sub-second capable (e.g. 100ms); overrides -timeout when set")
 	retries := flag.Int("retries", 5, "retransmits of one packet before the transfer is abandoned")
 	blockSize := flag.Int("blocksize", 0, "max TFTP block size to offer (0 = library default of 512; Pi firmware asks for 1468)")
 	singlePort := flag.Bool("single-port", false, "run in single port mode")
 	defaultFolder := flag.String("default-folder", "default", "folder to serve when IP address isn't overridden")
 	flag.Parse()
+	wait := time.Duration(*timeout) * time.Second
+	if *retransmit > 0 {
+		wait = *retransmit
+	}
 
 	var g run.Group
 
@@ -50,7 +55,7 @@ func main() {
 		s := server.Server{
 			Directory:     *directory,
 			Port:          *port,
-			Timeout:       time.Duration(*timeout) * time.Second,
+			Timeout:       wait,
 			Retries:       *retries,
 			BlockSize:     *blockSize,
 			SinglePort:    *singlePort,
