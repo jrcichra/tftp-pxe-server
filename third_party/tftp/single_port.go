@@ -30,7 +30,9 @@ func (s *Server) singlePortProcessRequests() error {
 					// We don't want to block the main loop if a channel is full
 				}
 			} else {
-				lc := make(chan []byte, 1)
+				// PATCHED (jrcichra/tftp-pxe-server): was 1. With SetAnticipate a client ACKs a whole
+				// window back-to-back; a 1-slot channel drops all but one and the window livelocks.
+				lc := make(chan []byte, 256)
 				s.handlers[srcAddr.String()] = lc
 				s.Unlock()
 				go func() {

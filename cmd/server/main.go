@@ -27,6 +27,7 @@ func main() {
 	retransmit := flag.Duration("retransmit", 0, "like -timeout but sub-second capable (e.g. 100ms); overrides -timeout when set")
 	retries := flag.Int("retries", 5, "retransmits of one packet before the transfer is abandoned")
 	blockSize := flag.Int("blocksize", 0, "max TFTP block size to offer (0 = library default of 512; Pi firmware asks for 1468)")
+	window := flag.Uint("window", 0, "blocks to send before waiting for ACKs (non-standard pipelining, 0/1 = off); beats the per-block round trip on a lossy link")
 	singlePort := flag.Bool("single-port", false, "run in single port mode")
 	defaultFolder := flag.String("default-folder", "default", "folder to serve when IP address isn't overridden")
 	flag.Parse()
@@ -58,6 +59,7 @@ func main() {
 			Timeout:       wait,
 			Retries:       *retries,
 			BlockSize:     *blockSize,
+			Window:        *window,
 			SinglePort:    *singlePort,
 			DefaultFolder: *defaultFolder,
 		}
