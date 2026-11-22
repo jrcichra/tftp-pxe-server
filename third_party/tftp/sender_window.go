@@ -55,6 +55,7 @@ func readFromWindow(s *sender, r io.Reader) (n int64, err error) {
 
 	sent := 0 // window[:sent] have been transmitted since the last (re)send of the window
 	timeouts := 0
+	probe := false // after a timeout, resend only window[0] until it is ACKed (a burst's head packet was being lost every time)
 	lastActivity := time.Now()
 	for {
 		if err = fill(); err != nil {
@@ -67,7 +68,7 @@ func readFromWindow(s *sender, r io.Reader) (n int64, err error) {
 			}
 			return n, nil
 		}
-		for sent < len(window) {
+		for sent < len(window) && !(probe && sent >= 1) {
 			p := window[sent]
 			if err = s.conn.sendTo(p.buf[:p.n], s.addr); err != nil {
 				s.abort(err)
@@ -93,7 +94,8 @@ func readFromWindow(s *sender, r io.Reader) (n int64, err error) {
 					return n, rerr
 				}
 				s.retry.backoff()
-				sent = 0 // go-back-N: resend everything outstanding
+				sent = 0 // go-back-N, but probe with just the first block
+				probe = true
 				lastActivity = time.Now()
 				continue
 			}
@@ -118,6 +120,7 @@ func readFromWindow(s *sender, r io.Reader) (n int64, err error) {
 				}
 				s.datagramsAcked++
 				timeouts = 0
+				probe = false
 				lastActivity = time.Now()
 			}
 		case pERROR:
