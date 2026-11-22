@@ -59,8 +59,10 @@ func (s *Server) Run() error {
 	s.server = tftp.NewServer(s.readHandler, nil)
 	s.server.SetTimeout(s.Timeout)
 	s.server.SetRetries(s.Retries)
-	// retransmit right after the timeout; the library default sleeps a random 0-1s on top
-	s.server.SetBackoff(func(int) time.Duration { return 50 * time.Millisecond })
+	// retransmit right after the timeout; the library default sleeps a random 0-1s on top.
+	// Kept tiny: the Pi gives up on a file after 30s, so on a lossy link every lost block
+	// has to cost milliseconds, not the timeout plus a pause.
+	s.server.SetBackoff(func(int) time.Duration { return time.Millisecond })
 	// must precede EnableSinglePort: it pins the block size to 512 unless one is already set
 	s.server.SetBlockSize(s.BlockSize)
 	if s.SinglePort {
