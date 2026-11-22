@@ -21,3 +21,6 @@ require (
 	golang.org/x/sys v0.48.0 // indirect
 	google.golang.org/protobuf v1.36.12 // indirect
 )
+
+// vendored v3.1.0 with the single-port retransmit-timer fix (see third_party/tftp/connection.go)
+replace github.com/pin/tftp/v3 => ./third_party/tftp

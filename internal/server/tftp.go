@@ -30,6 +30,8 @@ type Server struct {
 	Directory      string
 	Port           int
 	Timeout        time.Duration
+	Retries        int
+	BlockSize      int
 	SinglePort     bool
 	DefaultFolder  string
 	server         *tftp.Server
@@ -56,6 +58,11 @@ func (s *Server) Run() error {
 	s.metricsEntries = make(map[entry]float64)
 	s.server = tftp.NewServer(s.readHandler, nil)
 	s.server.SetTimeout(s.Timeout)
+	s.server.SetRetries(s.Retries)
+	// retransmit right after the timeout; the library default sleeps a random 0-1s on top
+	s.server.SetBackoff(func(int) time.Duration { return 50 * time.Millisecond })
+	// must precede EnableSinglePort: it pins the block size to 512 unless one is already set
+	s.server.SetBlockSize(s.BlockSize)
 	if s.SinglePort {
 		s.server.EnableSinglePort()
 	}
