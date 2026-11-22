@@ -40,14 +40,13 @@ type chanConnection struct {
 	channel       chan []byte
 	srcAddr, addr *net.UDPAddr
 	timeout       time.Duration
-	deadline      time.Time // absolute, set by setDeadline (see readFrom)
-	complete      chan string
+	deadline      time.Time
 }
 
 func (c *chanConnection) sendTo(data []byte, addr *net.UDPAddr) error {
 	var err error
-	c.server.Lock()
-	defer c.server.Unlock()
+	c.server.mu.Lock()
+	defer c.server.mu.Unlock()
 	if conn, ok := c.server.conn.(*net.UDPConn); ok {
 		srcAddr := c.srcAddr.IP.To4()
 		var cmm []byte
@@ -65,21 +64,14 @@ func (c *chanConnection) sendTo(data []byte, addr *net.UDPAddr) error {
 	return err
 }
 
-// PATCHED (jrcichra/tftp-pxe-server): upstream waited a fresh c.timeout on every
-// call, so each packet the caller ignores (a stalled client re-ACKing the last
-// block every ~2s) restarted the retransmit timer and the lost DATA packet was
-// never resent. Wait until the absolute deadline set by setDeadline instead,
-// matching connConnection's SetReadDeadline behaviour.
 func (c *chanConnection) readFrom(buffer []byte) (int, *net.UDPAddr, error) {
-	if c.deadline.IsZero() {
-		c.deadline = time.Now().Add(c.timeout)
-	}
 	select {
 	case data := <-c.channel:
-		for i := range data {
-			buffer[i] = data[i]
-		}
+		copy(buffer, data)
 		return len(data), c.addr, nil
+	// PATCHED (jrcichra/tftp-pxe-server, = pin/tftp PR #133 / issue #132): wait until an absolute
+	// deadline, not a fresh timeout per call, so a client re-ACKing a stale block cannot starve
+	// the retransmit timer forever. Drop this patch once #133 is released.
 	case <-time.After(time.Until(c.deadline)):
 		return 0, nil, makeError(c.addr.String())
 	}
@@ -92,8 +84,8 @@ func (c *chanConnection) setDeadline(deadline time.Duration) error {
 }
 
 func (c *chanConnection) close() {
-	c.server.Lock()
-	defer c.server.Unlock()
+	c.server.mu.Lock()
+	defer c.server.mu.Unlock()
 	close(c.channel)
 	delete(c.server.handlers, c.addr.String())
 }
@@ -108,7 +100,7 @@ func makeError(addr string) net.Error {
 		timeout:   true,
 		temporary: true,
 	}
-	error.error = fmt.Errorf("Channel timeout: %v", addr)
+	error.error = fmt.Errorf("channel timeout: %v", addr)
 	return &error
 }
 

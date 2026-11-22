@@ -103,7 +103,7 @@ func (s *sender) ReadFrom(r io.Reader) (n int64, err error) {
 		}
 	}
 	if s.sendA.enabled { /* senderAnticipate */
-		return readFromWindow(s, r)
+		return readFromAnticipate(s, r)
 	}
 	s.block = 1 // start data transmission with block 1
 	binary.BigEndian.PutUint16(s.send[0:2], opDATA)
@@ -278,6 +278,12 @@ func (s *sender) abort(err error) error {
 	if s.conn == nil {
 		return nil
 	}
+
+	defer func() {
+		s.conn.close()
+		s.conn = nil
+	}()
+
 	if s.hook != nil {
 		s.hook.OnFailure(s.buildTransferStats(), err)
 	}
@@ -286,7 +292,5 @@ func (s *sender) abort(err error) error {
 	if err != nil {
 		return err
 	}
-	s.conn.close()
-	s.conn = nil
 	return nil
 }

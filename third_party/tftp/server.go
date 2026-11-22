@@ -19,9 +19,10 @@ import (
 func NewServer(readHandler func(filename string, rf io.ReaderFrom) error,
 	writeHandler func(filename string, wt io.WriterTo) error) *Server {
 	s := &Server{
-		Mutex:             &sync.Mutex{},
+		mu:                &sync.Mutex{},
 		timeout:           defaultTimeout,
 		retries:           defaultRetries,
+		smartBlock:        true,
 		packetReadTimeout: 100 * time.Millisecond,
 		readHandler:       readHandler,
 		writeHandler:      writeHandler,
@@ -44,7 +45,7 @@ type RequestPacketInfo interface {
 
 // Server is an instance of a TFTP server
 type Server struct {
-	*sync.Mutex
+	mu           *sync.Mutex
 	readHandler  func(filename string, rf io.ReaderFrom) error
 	writeHandler func(filename string, wt io.WriterTo) error
 	hook         Hook
@@ -56,6 +57,7 @@ type Server struct {
 	timeout      time.Duration
 	retries      int
 	maxBlockLen  int
+	smartBlock   bool
 	sendAEnable  bool /* senderAnticipate enable by server */
 	sendAWinSz   uint
 	// Single port fields
@@ -95,8 +97,8 @@ type Hook interface {
 // runs through a different experimental code path. When winsz is 0 or 1,
 // the feature is disabled.
 func (s *Server) SetAnticipate(winsz uint) {
-	s.Lock()
-	defer s.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if winsz > 1 {
 		s.sendAEnable = true
 		s.sendAWinSz = winsz
@@ -108,8 +110,8 @@ func (s *Server) SetAnticipate(winsz uint) {
 
 // SetHook sets the Hook for success and failure of transfers
 func (s *Server) SetHook(hook Hook) {
-	s.Lock()
-	defer s.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.hook = hook
 }
 
@@ -119,8 +121,8 @@ func (s *Server) SetHook(hook Hook) {
 //
 // Enabling this will negatively impact performance
 func (s *Server) EnableSinglePort() {
-	s.Lock()
-	defer s.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.singlePort = true
 	s.handlers = make(map[string]chan []byte)
 	if s.maxBlockLen == 0 {
@@ -132,8 +134,8 @@ func (s *Server) EnableSinglePort() {
 // round-trip to succeed.
 // Default is 5 seconds.
 func (s *Server) SetTimeout(t time.Duration) {
-	s.Lock()
-	defer s.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if t <= 0 {
 		s.timeout = defaultTimeout
 	} else {
@@ -143,25 +145,38 @@ func (s *Server) SetTimeout(t time.Duration) {
 
 // SetBlockSize sets the maximum size of an individual data block.
 // This must be a value between 512 (the default block size for TFTP)
-// and 65456 (the max size a UDP packet payload can be).
+// and 65465 (the max size a UDP packet payload can be).
 //
 // This is an advisory value -- it will be clamped to the smaller of
 // the block size the client wants and the MTU of the interface being
 // communicated over munis overhead.
 func (s *Server) SetBlockSize(i int) {
-	s.Lock()
-	defer s.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if i > 512 && i < 65465 {
 		s.maxBlockLen = i
 	}
+}
+
+// SetBlockSizeNegotiation controls MTU-based blksize negotiation.
+//
+// When enabled (default), the server clamps negotiated block size to the
+// interface MTU (minus protocol overhead).
+//
+// When disabled, the server honors client-requested blksize (still bounded
+// by RFC limits and optional SetBlockSize cap).
+func (s *Server) SetBlockSizeNegotiation(enabled bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.smartBlock = enabled
 }
 
 // SetRetries sets maximum number of attempts server made to transmit a
 // packet.
 // Default is 5 attempts.
 func (s *Server) SetRetries(count int) {
-	s.Lock()
-	defer s.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if count < 1 {
 		s.retries = defaultRetries
 	} else {
@@ -172,8 +187,8 @@ func (s *Server) SetRetries(count int) {
 // SetBackoff sets a user provided function that is called to provide a
 // backoff duration prior to retransmitting an unacknowledged packet.
 func (s *Server) SetBackoff(h backoffFunc) {
-	s.Lock()
-	defer s.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.backoff = h
 }
 
@@ -201,14 +216,14 @@ func (s *Server) Serve(conn net.PacketConn) error {
 	if err != nil {
 		return err
 	}
-	s.Lock()
+	s.mu.Lock()
 	s.conn = conn
-	s.Unlock()
+	s.mu.Unlock()
 	// Having seperate control paths for IP4 and IP6 is annoying,
 	// but necessary at this point.
 	addr := net.ParseIP(host)
 	if addr == nil {
-		return fmt.Errorf("Failed to determine IP class of listening address")
+		return fmt.Errorf("failed to determine IP class of listening address")
 	}
 
 	if conn, ok := s.conn.(*net.UDPConn); ok {
@@ -310,30 +325,41 @@ func (s *Server) processRequest() error {
 // Shutdown blocks until all outstanding requests are processed or timed out.
 // Calling Shutdown from the handler or hook might cause deadlock.
 func (s *Server) Shutdown() {
-	if !s.singlePort {
-		s.Lock()
-		// Connection could not exist if Serve or
-		// ListenAndServe was never called.
-		if s.conn != nil {
-			s.conn.Close()
+	if s.singlePort {
+		s.cancelFn()
+		s.mu.Lock()
+		conn := s.conn
+		s.mu.Unlock()
+		if conn != nil {
+			// Wake the single-port read loop so it can observe cancellation.
+			_ = conn.SetReadDeadline(time.Now())
 		}
-		s.Unlock()
+		return
 	}
+	s.mu.Lock()
+	// Connection could not exist if Serve or
+	// ListenAndServe was never called.
+	if s.conn != nil {
+		s.conn.Close()
+	}
+	s.mu.Unlock()
 	s.cancelFn()
-	if !s.singlePort {
-		s.wg.Wait()
-	}
+	s.wg.Wait()
 }
 
 func (s *Server) handlePacket(localAddr net.IP, remoteAddr *net.UDPAddr, buffer []byte, n, maxBlockLen int, listener chan []byte) error {
-	s.Lock()
-	defer s.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	// Cope with packets received on the broadcast address
 	// We can't use this address as the source address in responses
 	// so fallback to the OS default.
 	if localAddr.Equal(net.IPv4bcast) {
 		localAddr = net.IPv4zero
+	}
+	if !s.smartBlock {
+		// Disable MTU-based clamping.
+		maxBlockLen = 65464
 	}
 
 	// handlePacket is always called with maxBlockLen = blockLength (above, in processRequest).
@@ -356,11 +382,7 @@ func (s *Server) handlePacket(localAddr net.IP, remoteAddr *net.UDPAddr, buffer 
 	case pWRQ:
 		filename, mode, opts, err := unpackRQ(p)
 		if err != nil {
-			return fmt.Errorf("unpack WRQ: %v", err)
-		}
-		//fmt.Printf("got WRQ (filename=%s, mode=%s, opts=%v)\n", filename, mode, opts)
-		if err != nil {
-			return fmt.Errorf("open transmission: %v", err)
+			return fmt.Errorf("unpack WRQ while starting transfer: %v", err)
 		}
 		wt := &receiver{
 			send:        make([]byte, datagramLength),

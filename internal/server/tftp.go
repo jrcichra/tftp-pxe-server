@@ -32,7 +32,6 @@ type Server struct {
 	Timeout        time.Duration
 	Retries        int
 	BlockSize      int
-	Window         uint
 	SinglePort     bool
 	DefaultFolder  string
 	server         *tftp.Server
@@ -66,7 +65,6 @@ func (s *Server) Run() error {
 	s.server.SetBackoff(func(int) time.Duration { return time.Millisecond })
 	// must precede EnableSinglePort: it pins the block size to 512 unless one is already set
 	s.server.SetBlockSize(s.BlockSize)
-	s.server.SetAnticipate(s.Window)
 	if s.SinglePort {
 		s.server.EnableSinglePort()
 	}
